@@ -5,6 +5,8 @@
 char msg = 'oi, aqui é a Kalinka, estou mandando uma mensagem!';
 
 void setup() {
+
+  Serial.begin();
   
 }
 
