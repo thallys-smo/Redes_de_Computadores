@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 void configuraTemporizador(int baud_rate){
   int frequencia;
   frequencia = constrain(baud_rate,1,1500);
