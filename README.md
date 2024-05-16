@@ -13,7 +13,7 @@ Para o desenvolvimento do trabalho, utilziamos os [PlatformIO](https://docs.plat
 ## Alunos 
 
 - Thallys Simões de Morais Oliveira - 11819827
-- Gabiela - 
-- Matheus Della Rocca Martins - 12549731
+- Gabiela Bacarin Marcondes         - 10873351 
+- Matheus Della Rocca Martins       - 12549731
 
 
