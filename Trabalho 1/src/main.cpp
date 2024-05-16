@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include "Temporizador.h"
 
-#define TX 13    // Pino que ocorrerá a transmissão
-#define BAUD_RATE 1  // Define baud rate  da comunicação
-#define RTS 2    
-#define CTS 3    
-#define PAR // Define paridade par
+#define TX 13          // Pino que ocorrerá a transmissão
+#define BAUD_RATE 1    // Define baud rate  da comunicação
+#define RTS 2          // Sinal de handshake (emissor)
+#define CTS 3          // Sinal de handshake (receptor)
+#define PAR            // Define paridade par
 #define B0_7
-#define TAM_MAX 100
+#define TAM_MAX 100    // Tamanho máximo do input do usuário
 
 #include "Temporizador.h"
 
@@ -137,10 +137,8 @@ void loop ( ) {
 
     // Indica que a transmissão foi finalizada - RTS para low
     digitalWrite(RTS,LOW);
+    
     // Espera receptor confirmar finalização da comunicação (CTS LOW)
     while(digitalRead(CTS) == HIGH);
-
-    caracter_index++;
   }
-
 }
