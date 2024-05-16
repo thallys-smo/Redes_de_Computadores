@@ -7,9 +7,14 @@
 #define CTS 3    
 #define PAR // Define paridade par
 #define B0_7
+#define TAM_MAX 100
+
+#include "Temporizador.h"
 
 char volatile bit_index = 0;
-char volatile dado_enviado;
+char volatile dados_enviados;
+
+
 
 // Calcula bit de paridade - Par ou impar
 bool bitParidade(char dado){
@@ -58,12 +63,14 @@ ISR(TIMER1_COMPA_vect){
     default: // Envio dos bits de dados
       #ifdef B0_7 // Envia bits na ordem crescente - do menos significativo para o mais
             value = bitRead(dado_enviado,bit_index);
+            break;
       #else
             value = bitRead(dado_enviado,(7 - bit_index));
-      #endif
             break;
+      #endif
     }
-  if (bit_index!=10){
+    
+  if bit_index!=10{
     digitalWrite(TX,value);
     Serial.println("Bit transmitido em TX: ");
     Serial.print(value);
@@ -101,28 +108,39 @@ void setup(){
 
 // O loop() eh executado continuamente (como um while(true))
 void loop ( ) {
-  // Verifica se existe caractere para ser enviado em loop
+  int num_bitsLidos =0;
+  char inputs [TAM_MAX];
+  // Verifica se existe algum input do usuário para ser enviado em loop
   do{
-    dado_enviado = Serial.read();
-  }while(dado_enviado == -1);
-  // Caracter recebido, manda RTS
-  digitalWrite(RTS,HIGH);
+    // dado_enviado = Serial.read();
+     num_bitsLidos = Serial.readBytesUntil('\n', inputs, TAM_MAX); // Lê caracteres até quebra de linha
+  }while(num_bitsLidos <=0);
 
-  // Espera recebimento da confirmação do receptor - CTS em HIGH
-  while(digitalRead(CTS) == LOW){
-      Serial.println("Esperando retorno do repector - handshake");
+  // Envio de um caractere por vez
+  for(int i=0; i<num_bitsLidos; i++){
+    // Manda RTS para início da comunicação
+    digitalWrite(RTS,HIGH);
+
+    // Espera recebimento da confirmação do receptor - CTS em HIGH
+    while(digitalRead(CTS) == LOW){
+        Serial.println("Esperando retorno do repector - handshake incompleto");
+    }
+    Serial.println("CTS recebido");
+
+    // Inicia transmissao de caracteres
+    dados_enviados = inputs[i]
+
+    digitalWrite(TX,LOW); // Start bit
+    bit_index = 0;
+    iniciaTemporizador();
+    while(bit_index < 11); // Espera fim da transmissao
+
+    // Indica que a transmissão foi finalizada - RTS para low
+    digitalWrite(RTS,LOW);
+    // Espera receptor confirmar finalização da comunicação (CTS LOW)
+    while(digitalRead(CTS) == HIGH);
+
+    caracter_index++;
   }
-  Serial.println("CTS recebido");
 
-  // Inicia transmissao
-  digitalWrite(TX,LOW); // Start bit
-  bit_index = 0;
-  iniciaTemporizador();
-  while(bit_index < 11); // Espera fim da transmissao
-
-  // Indica que a transmissão foi finalizada - RTS para low
-  digitalWrite(RTS,LOW);
-  // Espera receptor confirmar finalização da comunicação (CTS LOW)
-  while(digitalRead(CTS) == HIGH);
 }
-
