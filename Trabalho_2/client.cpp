@@ -5,8 +5,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <thread>
 
-// g++ -o client client.cpp
+// g++ -o client client.cpp -lpthread
 // ./client
 
 int createSocket();
@@ -14,44 +15,39 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void connectToSocket(int socketFD, struct sockaddr_in &server_addr); 
 int receiveData(int client_socketFD, char *buffer);
+void recvData(int socket);
+void sendData(int socket);
 std::string getUserInput(void);
-void sendData(int socketFD, const std::string &message);
+void sendMessage(int socketFD, const std::string &message);
 
 int main() {
-    int clientSocket = 0;
+    
+    int socket = 0;
     struct sockaddr_in serv_addr;
-    char buffer[1024] = {0};
 
     // Create socket file descriptor
-    clientSocket = createSocket();
+    socket = createSocket();
 
     // Define the server address
     int server_port = 8080;
     defineSocketAddr(serv_addr, "127.0.0.1", server_port);
 
     // Connect to the server
-    connectToSocket(clientSocket, serv_addr);
+    connectToSocket(socket, serv_addr);
 
     // Chat loop
-    while (true) {
-        // Get message from client user
-        std::string message = getUserInput();
-        
-        // Send message to server
-        sendData(clientSocket, message);
+    //Sending data -> Deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução
+    std::thread sendThread(sendData, socket);
+    std::thread recvThread(recvData, socket);
 
-        // Read reply from server
-        int valread = receiveData(clientSocket, buffer);
-        if (valread <= 0) {
-            std::cout << "Server disconnected or error occurred" << std::endl;
-            break;
-        }
-    }
+    sendThread.join();
+    recvThread.join();
 
     // Close the socket
-    close(clientSocket);
+    close(socket);
     return 0;
 }
+
 
 int createSocket() {
     int server_socketFD;
@@ -104,14 +100,37 @@ int receiveData(int client_socketFD, char *buffer) {
     return recvData_len;
 }
 
+
+void sendData(int socket){
+    while(true){
+        // Get message from client user
+        std::string message = getUserInput();
+        // Send message to server
+        sendMessage(socket, message);
+    }
+}
+
+void recvData(int socket){
+    char buffer[1024] = {0};
+    while(true){
+        // Printa retorno do servidor
+        int data_recv_len = receiveData(socket, buffer);
+        if (data_recv_len <= 0) {
+            std::cout << "ERRO: Perda de conexão com o servidor" << std::endl;
+            break;
+        }
+    }
+}
+
+
 std::string getUserInput(void) {
     std::string clientMsg;
-    std::cout << "Cliente: ";
     std::getline(std::cin, clientMsg);
 
     return clientMsg;
 }
 
-void sendData(int socketFD, const std::string &message) {
+void sendMessage(int socketFD, const std::string &message) {
     send(socketFD, message.c_str(), message.length(), 0);
 }
+

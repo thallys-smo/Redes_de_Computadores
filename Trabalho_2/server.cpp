@@ -6,8 +6,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <thread>
 
-//g++ -o server server.cpp
+// g++ -o server server.cpp -lpthread
 // ./server
 
 int createSocket();
@@ -16,11 +17,12 @@ void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void socket_listenToConections(int socketFD, int maxConections);
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen);
 int receiveData(int client_socketFD, char *buffer);
+void sendData(int socket);
 std::string getUserInput(void);
-void sendData(int socketFD, const std::string &message);
+void sendMessage(int socketFD, const std::string &message);
 
 int main() {
-    int server_socketFD, new_socket;
+    int server_socketFD;
     struct sockaddr_in server_addr;
     
     // Cria o socket
@@ -46,25 +48,27 @@ int main() {
     // Aceita novas conexões
     struct sockaddr_in client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
-    new_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
+    int client_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
 
 
     char buffer[1024] = {0};
 
     // Loop de comunicação
     while (true) {
-        int recvData_len = receiveData(new_socket, buffer);
+        int recvData_len = receiveData(client_socket, buffer);
         if (recvData_len <= 0) {
             break;
         }
-        std::string serverMsg;
-        serverMsg = getUserInput();      
-        sendData(new_socket, serverMsg);
+
+       //Sending data -> Deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução
+        std::thread sendThread(sendData, client_socket);
+        sendThread.detach(); // Roda thread no background
+
         
     }
 
     // Fecha os sockets
-    close(new_socket);
+    close(client_socket);
     close(server_socketFD);
     return 0;
 }
@@ -130,14 +134,21 @@ int receiveData(int client_socketFD, char *buffer) {
     return recvData_len;
 }
 
-std::string getUserInput(void){
-    std::string serverMsg;
-    std::cout << "Servidor: ";
-    std::getline(std::cin, serverMsg);
 
-    return serverMsg;
+void sendData(int socket){
+    // Get message from client user
+    std::string message = getUserInput();
+    // Send message to server
+    sendMessage(socket, message);
 }
 
-void sendData(int socketFD, const std::string &message) {
+std::string getUserInput(void) {
+    std::string clientMsg;
+    std::getline(std::cin, clientMsg);
+
+    return clientMsg;
+}
+
+void sendMessage(int socketFD, const std::string &message) {
     send(socketFD, message.c_str(), message.length(), 0);
 }
