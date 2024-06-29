@@ -12,8 +12,7 @@
 
 int createSocket();
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port);
-void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
-void connectToSocket(int socketFD, struct sockaddr_in &server_addr); 
+void connectToSocket(int socketFD, struct sockaddr_in &server_addr, int port); 
 void recvData(int client_socketFD);
 void sendData(int socket, const std::string &username);
 std::string getUserInput(void);
@@ -32,11 +31,18 @@ int main() {
     defineSocketAddr(serv_addr, "127.0.0.1", server_port);
 
     // Connect to the server
-    connectToSocket(socket, serv_addr);
+    connectToSocket(socket, serv_addr, server_port);
+
+    std::cout << std::endl << " --------  GROUP CHAT: Aplicação com Sockets TCP  -----------" << std::endl << std::endl << std::endl ;
 
     std::string username;
     std::cout << "Informe seu nome de usuário: ";
     std::getline(std::cin, username);
+
+
+    std::cout << std::endl << "Bem vindo a nossa aplicação " << username << "!" << std::endl;
+    std::cout << "Envie e receba mensagens livremente para seus amigos!" << std::endl <<  std::endl << "Caso deseje visualizar possíveis comandos, basta mandar /help" << std::endl << std::endl;
+
 
     // Chat loop
     //Sending data -> Deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução
@@ -77,23 +83,13 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
     }
 }
 
-void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) {
-    if (bind(socketFD, (struct sockaddr *)&socket_addr, sizeof(socket_addr)) < 0) {
-        perror("Bind do servidor no endereço fornecido falhou");
-        close(socketFD);
-        exit(EXIT_FAILURE);
-    } 
 
-    std::cout << "Bind estabelecidao com port " <<  server_port << std::endl;
-
-}
-
-void connectToSocket(int socketFD, struct sockaddr_in &server_addr) {
+void connectToSocket(int socketFD, struct sockaddr_in &server_addr, int port) {
     if (connect(socketFD, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         std::cerr << "Connection Failed" << std::endl;
         exit(EXIT_FAILURE);
     }
-    std::cout << "Conexão estabelecida com servidor" << std::endl;
+    std::cout << "Conexão estabelecida com servidor na porta " << port << std::endl;
 
 }
 

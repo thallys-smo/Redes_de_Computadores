@@ -8,16 +8,33 @@
 #include <netinet/in.h>
 #include <thread>
 
+#include <vector>
+
 // g++ -o server server.cpp -lpthread
 // ./server
+
+struct ClientInfo_Struct {
+    int client_Socket;
+    sockaddr_in client_Address;
+    int client_ID;
+};
+
+std::vector<ClientInfo_Struct> clients_list;
+int clientID_counter = 0;
+
 
 int createSocket();
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port);
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void socket_listenToConections(int socketFD, int maxConections);
+
+void server_recvConections(int server_socketFD);
+void socket_dealWithNewConnections(int server_socketFD, int client_ID);
+
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen);
-void recvData(int client_socketFD);
-void sendData(int socket, const std::string &name);
+void recvData(int client_socketFD, int client_ID);
+void broadcastClientMsg(const std::string &message, int clientID);
+void sendServerMsg(int socket);
 std::string getUserInput(void);
 void sendMessage(int socketFD, const std::string &message);
 
@@ -38,30 +55,15 @@ int main() {
     defineSocketAddr(server_addr, server_IP, server_port);
     socklen_t server_addrlen = sizeof(server_addr);
 
-    // Bind o socket no endereço definido
+    // Linka o socket no endereço definido
     bindSocket(server_socketFD, server_addr, server_port);
 
-    // Ouvindo conexões (limite de 10 conexões)
-    int maxConections = 10;
+    // Ouvindo conexões (limite de 15 conexões)
+    int maxConections = 15;
     socket_listenToConections(server_socketFD, maxConections);
 
-    // Aceita novas conexões
-    struct sockaddr_in client_addr;
-    socklen_t client_addrlen = sizeof(client_addr);
-    int client_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
+    server_recvConections(server_socketFD); 
 
-    // Loop de comunicação
-    std::thread recvThread(recvData, client_socket);
-
-    //Sending data -> Deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução
-    std::thread sendThread(sendData, client_socket, "Servidor");
-
-    recvThread.join(); // Roda thread no background
-    sendThread.join(); // Roda thread no background
-
-        
-    // Fecha os sockets
-    close(client_socket);
     close(server_socketFD);
     return 0;
 }
@@ -71,7 +73,7 @@ int createSocket() {
     
     // Cria o socket file descriptor 
     if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { // SOCK_STREAM -> IPv4
-        perror("Criação do socket falhou");
+        std::cout << "ERRO: Criação do socket falhou" << std::endl;
         exit(EXIT_FAILURE);
     }
 
@@ -93,40 +95,91 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
 
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) {
     if (bind(socketFD, (struct sockaddr *)&socket_addr, sizeof(socket_addr)) < 0) {
-        perror("Bind do servidor no endereço fornecido falhou");
+        std::cout << "Bind do servidor no endereço fornecido falhou" << std::endl;
         close(socketFD);
         exit(EXIT_FAILURE);
     }
     else{
-        std::cout << "Bind estabelecidao com port " <<  server_port << std::endl;    }
+        std::cout << "Bind estabelecidao na porta " <<  server_port << std::endl;    }
 }
 
 void socket_listenToConections(int socketFD, int maxConections) {
     if (listen(socketFD, maxConections) < 0) {
-        perror("Listen");
+        std::cout << "ERRO: Falha ao escutar novas conexões" << std::endl;
         close(socketFD);
         exit(EXIT_FAILURE);
     }
 }
+
+
+void server_recvConections(int server_socketFD){
+    while(true){
+        struct sockaddr_in client_addr;
+        socklen_t client_addrlen = sizeof(client_addr);
+
+        // Aceitação de uma nova conexão
+        int client_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
+        // Conexão estabelecida
+        std::cout << std::endl << "Novo cliente conectado!" << std::endl;
+
+        int client_ID = clientID_counter;
+
+        // Adicione novo cliente a lista de clientes
+        clients_list.push_back({client_socket, client_addr, client_ID});
+        clientID_counter++;
+
+        // Lide com os clientes de forma paralela
+        std::thread thread_dealWithNewConnections(socket_dealWithNewConnections, client_socket, client_ID);
+        thread_dealWithNewConnections.detach(); 
+    }
+    return;
+}
+
+
+void socket_dealWithNewConnections(int client_socketFD, int client_ID){
+    // Loop de comunicação
+    std::thread recvThread(recvData, client_socketFD, client_ID);
+    std::thread sendServerMsgThread(sendServerMsg, client_socketFD);
+    recvThread.join();
+    sendServerMsgThread.join(); 
+   
+    // Fecha os sockets
+    close(client_socketFD);
+
+    // Tirar client da lista
+    for (size_t i = 0; i < clients_list.size(); ++i) {
+        if (clients_list[i].client_ID == client_ID) {
+            clients_list.erase(clients_list.begin() + i);
+            --i;
+        }
+    }
+
+    return;
+}
+
+
 
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen) {
     int client_socket;
 
     if ((client_socket = accept(socketFD, (struct sockaddr *)&client_addr, &client_addrlen)) < 0) {
-        perror("ERRO: Falha ao aceitar nova conexão");
+        std::cout << "ERRO: Falha ao aceitar nova conexão" << std::endl;        
         close(socketFD);
         exit(EXIT_FAILURE);
     }
     return client_socket;
 }
 
-void recvData(int client_socketFD) {
+
+
+void recvData(int client_socketFD, int client_ID) {
     char buffer[1024] = {0};
     while(true){
         memset(buffer, 0, sizeof(buffer));
         int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
         if (recvData_len > 0) {
-            std::cout << buffer << std::endl;
+            // std::cout << "Mensagem recebida: " << buffer << std::endl;
+            broadcastClientMsg(buffer, client_ID);
         }
         else if (recvData_len <= 0) {
             std::cout << "ERRO: Perda de conexão com o client" << std::endl;
@@ -137,7 +190,20 @@ void recvData(int client_socketFD) {
 }
 
 
-void sendData(int socket, const std::string &name){
+
+void broadcastClientMsg(const std::string &message, int clientID){
+    // Percorre a lista de clientes e manda a mensagem para todos que tiverem um ID diferente do cliente
+    for (const auto &client : clients_list) {
+        if (client.client_ID != clientID) {
+            sendMessage(client.client_Socket, message);
+        }
+    }
+}
+
+
+
+void sendServerMsg(int socket){
+    std::string name = "Servidor";
     while(true){
         // Get message from client user
         std::string message = getUserInput();
