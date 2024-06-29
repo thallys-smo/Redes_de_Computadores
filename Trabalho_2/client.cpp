@@ -14,9 +14,8 @@ int createSocket();
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port);
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void connectToSocket(int socketFD, struct sockaddr_in &server_addr); 
-int receiveData(int client_socketFD, char *buffer);
-void recvData(int socket);
-void sendData(int socket);
+void recvData(int client_socketFD);
+void sendData(int socket, const std::string &username);
 std::string getUserInput(void);
 void sendMessage(int socketFD, const std::string &message);
 
@@ -29,15 +28,19 @@ int main() {
     socket = createSocket();
 
     // Define the server address
-    int server_port = 8080;
+    int server_port = 8082;
     defineSocketAddr(serv_addr, "127.0.0.1", server_port);
 
     // Connect to the server
     connectToSocket(socket, serv_addr);
 
+    std::string username;
+    std::cout << "Informe seu nome de usuário: ";
+    std::getline(std::cin, username);
+
     // Chat loop
     //Sending data -> Deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução
-    std::thread sendThread(sendData, socket);
+    std::thread sendThread(sendData, socket, username);
     std::thread recvThread(recvData, socket);
 
     sendThread.join();
@@ -79,9 +82,10 @@ void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) 
         perror("Bind do servidor no endereço fornecido falhou");
         close(socketFD);
         exit(EXIT_FAILURE);
-    } else {
-        std::cout << "Bind estabelecidao com port " <<  server_port << std::endl;
-    }
+    } 
+
+    std::cout << "Bind estabelecidao com port " <<  server_port << std::endl;
+
 }
 
 void connectToSocket(int socketFD, struct sockaddr_in &server_addr) {
@@ -89,39 +93,24 @@ void connectToSocket(int socketFD, struct sockaddr_in &server_addr) {
         std::cerr << "Connection Failed" << std::endl;
         exit(EXIT_FAILURE);
     }
+    std::cout << "Conexão estabelecida com servidor" << std::endl;
+
 }
 
-int receiveData(int client_socketFD, char *buffer) {
-    memset(buffer, 0, sizeof(buffer));
-    int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
-    if (recvData_len > 0) {
-        std::cout << "Servidor: " << buffer << std::endl;
-    }
-    return recvData_len;
-}
-
-
-void sendData(int socket){
+void sendData(int socket, const std::string &username){
     while(true){
         // Get message from client user
         std::string message = getUserInput();
-        // Send message to server
-        sendMessage(socket, message);
-    }
-}
 
-void recvData(int socket){
-    char buffer[1024] = {0};
-    while(true){
-        // Printa retorno do servidor
-        int data_recv_len = receiveData(socket, buffer);
-        if (data_recv_len <= 0) {
-            std::cout << "ERRO: Perda de conexão com o servidor" << std::endl;
-            break;
+        std::string completeMsg = username + ": " + message;
+        if(message.back() == '\n'){
+            completeMsg.pop_back();
         }
+
+        // Send message to server
+        sendMessage(socket, completeMsg);
     }
 }
-
 
 std::string getUserInput(void) {
     std::string clientMsg;
@@ -134,3 +123,19 @@ void sendMessage(int socketFD, const std::string &message) {
     send(socketFD, message.c_str(), message.length(), 0);
 }
 
+
+void recvData(int client_socketFD) {
+    char buffer[1024] = {0};
+    while(true){
+        memset(buffer, 0, sizeof(buffer));
+        int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
+        if (recvData_len > 0) {
+            std::cout << buffer << std::endl;
+        }
+        else if (recvData_len <= 0) {
+            std::cout << "ERRO: Perda de conexão com o servidor" << std::endl;
+            break;
+        }
+    }
+    return;
+}
