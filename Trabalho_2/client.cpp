@@ -27,7 +27,7 @@ int main() {
     socket = createSocket();
 
     // Define the server address
-    int server_port = 8082;
+    int server_port = 8080;
     defineSocketAddr(serv_addr, "127.0.0.1", server_port);
 
     // Connect to the server
@@ -99,13 +99,14 @@ void sendData(int socket, const std::string &username){
         // Get message from client user
         std::string message = getUserInput();
 
-        std::string completeMsg = username + ": " + message;
+        // std::string completeMsg = username + ": " + message;
+
         if(message.back() == '\n'){
-            completeMsg.pop_back();
+            message.pop_back();
         }
 
         // Send message to server
-        sendMessage(socket, completeMsg);
+        sendMessage(socket, message);
     }
 }
 
@@ -127,7 +128,7 @@ void recvData(int client_socketFD) {
         memset(buffer, 0, sizeof(buffer));
         int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
         if (recvData_len > 0) {
-            std::cout << buffer << std::endl;
+            std::cout << std::endl << buffer << std::endl;
         }
         else if (recvData_len <= 0) {
             std::cout << "ERRO: Perda de conexão com o servidor" << std::endl;

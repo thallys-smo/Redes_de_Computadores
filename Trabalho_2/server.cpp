@@ -31,9 +31,10 @@ void socket_listenToConections(int socketFD, int maxConections);
 
 void server_recvConections(int server_socketFD);
 void socket_dealWithNewConnections(int server_socketFD, int client_ID, const std::string client_name);
-
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen);
-void recvData(int client_socketFD, int client_ID, const std::string client_name);
+
+void recvData(int client_socketFD, int client_ID, const std::string origin_clientName);
+void sendDirectMsg(const std::string &message, const std::string clientName);
 void broadcastClientMsg(const std::string &message, int clientID);
 void sendServerMsg(int socket);
 std::string getUserInput(void);
@@ -46,7 +47,7 @@ int main() {
     // Cria o socket
     server_socketFD = createSocket();
 
-    int server_port = 8082;
+    int server_port = 8080;
     std::string server_IP = ""; // Se quiser usar o server ouça qualquer ip deixar vazio ""
     if (server_IP == "localHost") {
         server_IP = "127.0.0.1";
@@ -178,17 +179,38 @@ void socket_dealWithNewConnections(int client_socketFD, int client_ID, const std
 }
 
 
-void recvData(int client_socketFD, int client_ID, const std::string client_name) {
+void recvData(int client_socketFD, int client_ID, const std::string origin_clientName) {
     char buffer[1024] = {0};
     while(true){
         memset(buffer, 0, sizeof(buffer));
         int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
+        std::string receivedMessage(buffer);
         if (recvData_len > 0) {
-            // std::cout << "Mensagem recebida: " << buffer << std::endl;
-            broadcastClientMsg(buffer, client_ID);
+            std::string headerMsg = origin_clientName + ": "; 
+
+            // Envio de uma mensagem direta para outro cliente
+            if (receivedMessage.find("dm ") == 0) {      
+                for (const auto &client : clients_list) {
+                    std::string directMsgSign = "dm " + client.client_Name + ":";
+                    if(receivedMessage.find(directMsgSign)==0){
+                        std::string directMsg = receivedMessage.substr(directMsgSign.length(), receivedMessage.length()-1);
+                        // Tirar espaço do início da mensagem caso exista
+                        if(directMsg[0] == ' '){
+                            directMsg = directMsg.substr(1, directMsg.length()-1);
+                        }
+                        directMsg = "(DM) " + headerMsg + directMsg;
+                        std::cout << std::endl << "Mandando mensagem direta para " << client.client_Name << " de " << origin_clientName << std::endl; 
+                        sendDirectMsg(directMsg, client.client_Name);
+                    }
+                }
+            }else{
+                // Envio da mensagem para todos os outros clientes (broadcast mode)
+                std::string broadcastMsg = "(broadcast) " + headerMsg + buffer; 
+                broadcastClientMsg(broadcastMsg, client_ID);
+            }
         }
         else if (recvData_len <= 0) {
-            std::cout << std::endl << "ERRO: Perda de conexão com o client -> " << client_name << std::endl;
+            std::cout << std::endl << "ERRO: Perda de conexão com o client -> " << origin_clientName << std::endl;
             break;
         }
     }
@@ -196,7 +218,12 @@ void recvData(int client_socketFD, int client_ID, const std::string client_name)
 }
 
 
-void sendDirectMsg(const std::string &message, int clientID){
+void sendDirectMsg(const std::string &message, const std::string targetClient){
+    for (const auto &client : clients_list) {
+        if (client.client_Name == targetClient) {
+            sendMessage(client.client_Socket, message);
+        }
+    }
     return;
 }
 
