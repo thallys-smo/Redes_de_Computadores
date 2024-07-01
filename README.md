@@ -12,8 +12,12 @@ Para o desenvolvimento do trabalho, utilziamos os [PlatformIO](https://docs.plat
 
 ## Alunos 
 
+### Trabalho 1
 - Thallys Simões de Morais Oliveira - 11819827
 - Gabiela Bacarin Marcondes         - 10873351 
 - Matheus Della Rocca Martins       - 12549731
 
+### Trabalho 2
+- Thallys Simões de Morais Oliveira - 11819827
+- Matheus Della Rocca Martins       - 12549731
 
