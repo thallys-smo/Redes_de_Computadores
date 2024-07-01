@@ -42,7 +42,7 @@ int main() {
 
 
     std::cout << std::endl << "Bem vindo a nossa aplicação " << username << "!" << std::endl;
-    std::cout << "Envie e receba mensagens livremente para seus amigos!" << std::endl <<  std::endl << "Caso deseje visualizar possíveis comandos, basta mandar /help" << std::endl << std::endl;
+    std::cout << "Envie e receba mensagens livremente para seus amigos!" << std::endl <<  std::endl << "Caso deseje visualizar possíveis comandos, basta mandar help" << std::endl << std::endl;
 
 
     // Chat loop

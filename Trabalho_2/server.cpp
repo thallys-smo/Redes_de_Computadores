@@ -13,26 +13,24 @@
 // g++ -o server server.cpp -lpthread
 // ./server
 
+// Variáveis para armazenar informações do cliente
 struct ClientInfo_Struct {
     int client_Socket;
     sockaddr_in client_Address;
     int client_ID;
     std::string client_Name;
 };
-
 std::vector<ClientInfo_Struct> clients_list;
 int clientID_counter = 0;
 
-
+// Declaração das funções
 int createSocket();
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port);
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void socket_listenToConections(int socketFD, int maxConections);
-
 void server_recvConections(int server_socketFD);
 void socket_dealWithNewConnections(int server_socketFD, int client_ID, const std::string client_name);
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen);
-
 void recvData(int client_socketFD, int client_ID, const std::string origin_clientName);
 void sendDirectMsg(const std::string &message, const std::string clientName);
 void broadcastClientMsg(const std::string &message, int clientID);
@@ -40,13 +38,15 @@ void sendServerMsg(int socket);
 std::string getUserInput(void);
 void sendMessage(int socketFD, const std::string &message);
 
+
 int main() {
     int server_socketFD;
     struct sockaddr_in server_addr;
     
-    // Cria o socket
+    // Cria o socket do servidor
     server_socketFD = createSocket();
 
+    // Configurações de porta e ip do socket
     int server_port = 8080;
     std::string server_IP = ""; // Se quiser usar o server ouça qualquer ip deixar vazio ""
     if (server_IP == "localHost") {
@@ -64,17 +64,22 @@ int main() {
     int maxConections = 15;
     socket_listenToConections(server_socketFD, maxConections);
 
+    // Trata conexões recebidas
     server_recvConections(server_socketFD); 
 
+    // Encerra o socket do servidor
     close(server_socketFD);
+
     return 0;
 }
+
+
 
 int createSocket() {
     int server_socketFD;
     
-    // Cria o socket file descriptor 
-    if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { // SOCK_STREAM -> IPv4
+    // Cria o socket file descriptor para os protocolos IPv4 e TCP
+    if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
         std::cout << "ERRO: Criação do socket falhou" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -87,7 +92,7 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
     server_addr.sin_family = AF_INET; // Especifica protocolo IPv4
     server_addr.sin_port = htons(port); // Converte o número da porta fornecida para o formato aceito pela rede
 
-    // Se ip estiver definido como localHost o servidor irá ser capaz de ouvir em qualquer IP disponível
+    // Se ip estiver definido como "" o servidor irá ser capaz de ouvir em qualquer IP disponível
     if(ip==""){
         server_addr.sin_addr.s_addr = INADDR_ANY;
     }else{
@@ -96,6 +101,7 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
 }
 
 void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) {
+    // Linka o socket com o endereço fornecido
     if (bind(socketFD, (struct sockaddr *)&socket_addr, sizeof(socket_addr)) < 0) {
         std::cout << "Bind do servidor no endereço fornecido falhou" << std::endl;
         close(socketFD);
@@ -106,13 +112,13 @@ void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) 
 }
 
 void socket_listenToConections(int socketFD, int maxConections) {
+    // Mantém o socket ouvindo novas conexões até que se alcance o limite definido
     if (listen(socketFD, maxConections) < 0) {
         std::cout << "ERRO: Falha ao escutar novas conexões" << std::endl;
         close(socketFD);
         exit(EXIT_FAILURE);
     }
 }
-
 
 void server_recvConections(int server_socketFD){
     while(true){
@@ -132,17 +138,16 @@ void server_recvConections(int server_socketFD){
 
         int client_ID = clientID_counter;
 
-        // Adicione novo cliente a lista de clientes
+        // Adiciona novo cliente à lista de clientes
         clients_list.push_back({client_socket, client_addr, client_ID, client_name});
         clientID_counter++;
 
-        // Lide com os clientes de forma paralela
+        // Lida com os clientes de forma paralela
         std::thread thread_dealWithNewConnections(socket_dealWithNewConnections, client_socket, client_ID, client_name);
         thread_dealWithNewConnections.detach(); 
     }
     return;
 }
-
 
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen) {
     int client_socket;
@@ -156,28 +161,26 @@ int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, sockl
     return client_socket;
 }
 
-
 void socket_dealWithNewConnections(int client_socketFD, int client_ID, const std::string client_name){
     // Loop de comunicação
     std::thread recvThread(recvData, client_socketFD, client_ID, client_name);
     std::thread sendServerMsgThread(sendServerMsg, client_socketFD);
     recvThread.join();
-    sendServerMsgThread.join(); 
-   
+    sendServerMsgThread.detach(); 
+
     // Fecha os sockets
     close(client_socketFD);
 
     // Tirar client da lista
-    for (size_t i = 0; i < clients_list.size(); ++i) {
-        if (clients_list[i].client_ID == client_ID) {
-            clients_list.erase(clients_list.begin() + i);
-            --i;
+    for (auto it = clients_list.begin(); it != clients_list.end(); ++it) {
+        if (it->client_ID == client_ID) {
+            clients_list.erase(it);
+            break;  // Importante: sair do loop após a remoção
         }
     }
 
     return;
 }
-
 
 void recvData(int client_socketFD, int client_ID, const std::string origin_clientName) {
     char buffer[1024] = {0};
@@ -203,6 +206,19 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
                         sendDirectMsg(directMsg, client.client_Name);
                     }
                 }
+            // Servidor retorna lista de comandos para o usuário
+            }else if(receivedMessage=="help"){
+                std::string helpMsg = "Possíveis comandos:\n"
+                          "- *dm nomeDoCliente:* -> Envia mensagem direta para outro cliente.\n"
+                          "- *client list* -> Retorna uma lista de todos os clientes conectados.\n";
+                sendDirectMsg(helpMsg, origin_clientName);
+            }else if(receivedMessage=="client list"){
+                std::string listMsg = "Lista de clientes conectados:\n";
+                for (const auto &client : clients_list) {
+                    listMsg += "- " + client.client_Name + "\n";
+                }
+                sendDirectMsg(listMsg, origin_clientName);
+
             }else{
                 // Envio da mensagem para todos os outros clientes (broadcast mode)
                 std::string broadcastMsg = "(broadcast) " + headerMsg + buffer; 
