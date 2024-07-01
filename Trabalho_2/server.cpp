@@ -17,6 +17,7 @@ struct ClientInfo_Struct {
     int client_Socket;
     sockaddr_in client_Address;
     int client_ID;
+    std::string client_Name;
 };
 
 std::vector<ClientInfo_Struct> clients_list;
@@ -29,10 +30,10 @@ void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port);
 void socket_listenToConections(int socketFD, int maxConections);
 
 void server_recvConections(int server_socketFD);
-void socket_dealWithNewConnections(int server_socketFD, int client_ID);
+void socket_dealWithNewConnections(int server_socketFD, int client_ID, const std::string client_name);
 
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen);
-void recvData(int client_socketFD, int client_ID);
+void recvData(int client_socketFD, int client_ID, const std::string client_name);
 void broadcastClientMsg(const std::string &message, int clientID);
 void sendServerMsg(int socket);
 std::string getUserInput(void);
@@ -119,26 +120,45 @@ void server_recvConections(int server_socketFD){
 
         // Aceitação de uma nova conexão
         int client_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
+
+        char name_input[1024] = {0};
+        recv(client_socket, name_input, sizeof(name_input), 0);
+
+        std::string client_name(name_input);
+
         // Conexão estabelecida
-        std::cout << std::endl << "Novo cliente conectado!" << std::endl;
+        std::cout << std::endl << "Novo cliente conectado: " << client_name << std::endl;
 
         int client_ID = clientID_counter;
 
         // Adicione novo cliente a lista de clientes
-        clients_list.push_back({client_socket, client_addr, client_ID});
+        clients_list.push_back({client_socket, client_addr, client_ID, client_name});
         clientID_counter++;
 
         // Lide com os clientes de forma paralela
-        std::thread thread_dealWithNewConnections(socket_dealWithNewConnections, client_socket, client_ID);
+        std::thread thread_dealWithNewConnections(socket_dealWithNewConnections, client_socket, client_ID, client_name);
         thread_dealWithNewConnections.detach(); 
     }
     return;
 }
 
 
-void socket_dealWithNewConnections(int client_socketFD, int client_ID){
+int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen) {
+    int client_socket;
+
+    if ((client_socket = accept(socketFD, (struct sockaddr *)&client_addr, &client_addrlen)) < 0) {
+        std::cout << "ERRO: Falha ao aceitar nova conexão" << std::endl;        
+        close(socketFD);
+        exit(EXIT_FAILURE);
+    }
+
+    return client_socket;
+}
+
+
+void socket_dealWithNewConnections(int client_socketFD, int client_ID, const std::string client_name){
     // Loop de comunicação
-    std::thread recvThread(recvData, client_socketFD, client_ID);
+    std::thread recvThread(recvData, client_socketFD, client_ID, client_name);
     std::thread sendServerMsgThread(sendServerMsg, client_socketFD);
     recvThread.join();
     sendServerMsgThread.join(); 
@@ -158,21 +178,7 @@ void socket_dealWithNewConnections(int client_socketFD, int client_ID){
 }
 
 
-
-int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen) {
-    int client_socket;
-
-    if ((client_socket = accept(socketFD, (struct sockaddr *)&client_addr, &client_addrlen)) < 0) {
-        std::cout << "ERRO: Falha ao aceitar nova conexão" << std::endl;        
-        close(socketFD);
-        exit(EXIT_FAILURE);
-    }
-    return client_socket;
-}
-
-
-
-void recvData(int client_socketFD, int client_ID) {
+void recvData(int client_socketFD, int client_ID, const std::string client_name) {
     char buffer[1024] = {0};
     while(true){
         memset(buffer, 0, sizeof(buffer));
@@ -182,13 +188,17 @@ void recvData(int client_socketFD, int client_ID) {
             broadcastClientMsg(buffer, client_ID);
         }
         else if (recvData_len <= 0) {
-            std::cout << "ERRO: Perda de conexão com o client" << std::endl;
+            std::cout << std::endl << "ERRO: Perda de conexão com o client -> " << client_name << std::endl;
             break;
         }
     }
     return;
 }
 
+
+void sendDirectMsg(const std::string &message, int clientID){
+    return;
+}
 
 
 void broadcastClientMsg(const std::string &message, int clientID){
@@ -198,6 +208,7 @@ void broadcastClientMsg(const std::string &message, int clientID){
             sendMessage(client.client_Socket, message);
         }
     }
+    return;
 }
 
 
@@ -205,15 +216,19 @@ void broadcastClientMsg(const std::string &message, int clientID){
 void sendServerMsg(int socket){
     std::string name = "Servidor";
     while(true){
-        // Get message from client user
+        // Recebe mensagem do gerenciador do servidor
         std::string message = getUserInput();
 
         std::string completeMsg = name + ": " + message;
-        // Send message to server
-        sendMessage(socket, completeMsg);
+        // Manda mensagem do servidor para todos os clientes
+        for (const auto &client : clients_list) {
+            sendMessage(client.client_Socket, completeMsg);
+        }
     }
+
     return;
 }
+
 
 std::string getUserInput(void) {
     std::string clientMsg;
@@ -221,6 +236,7 @@ std::string getUserInput(void) {
 
     return clientMsg;
 }
+
 
 void sendMessage(int socketFD, const std::string &message) {
     send(socketFD, message.c_str(), message.length(), 0);

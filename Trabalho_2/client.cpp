@@ -38,6 +38,7 @@ int main() {
     std::string username;
     std::cout << "Informe seu nome de usuário: ";
     std::getline(std::cin, username);
+    sendMessage(socket, username);
 
 
     std::cout << std::endl << "Bem vindo a nossa aplicação " << username << "!" << std::endl;
