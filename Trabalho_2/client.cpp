@@ -7,9 +7,11 @@
 #include <unistd.h>
 #include <thread>
 
+// Comandos de compilação
 // g++ -o client client.cpp -lpthread
 // ./client
 
+// Declaração das funções
 int createSocket();
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port);
 void connectToSocket(int socketFD, struct sockaddr_in &server_addr, int port); 
@@ -38,6 +40,7 @@ int main() {
     std::string username;
     std::cout << "Informe seu nome de usuário: ";
     std::getline(std::cin, username);
+    // Envia nome de usuário para cadastro no servidor
     sendMessage(socket, username);
 
 
@@ -49,7 +52,6 @@ int main() {
     // Envio de dados deve rodar de forma paralela já que o recebimento do input pelo usuário bloqueia a execução da thread
     std::thread sendThread(sendData, socket, username);
     std::thread recvThread(recvData, socket);
-
     sendThread.join();
     recvThread.join();
 
@@ -61,22 +63,18 @@ int main() {
 
 int createSocket() {
     int server_socketFD;
-    
     // Cria o socket file descriptor para os protocolos IPv4 e TCP
     if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { // SOCK_STREAM -> IPv4
         perror("Criação do socket falhou");
         exit(EXIT_FAILURE);
     }
-
     return server_socketFD;
 }
 
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port) {
-
     // Define o endereço do servidor
     server_addr.sin_family = AF_INET; // Especifica protocolo IPv4
     server_addr.sin_port = htons(port); // Converte o número da porta fornecida para o formato aceito pela rede
-
     // Se ip estiver definido como "" o servidor irá ser capaz de ouvir em qualquer IP disponível
     if (ip == "") {
         server_addr.sin_addr.s_addr = INADDR_ANY;

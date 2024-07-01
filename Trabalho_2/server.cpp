@@ -10,6 +10,7 @@
 
 #include <vector>
 
+// Comandos de compilação
 // g++ -o server server.cpp -lpthread
 // ./server
 
@@ -121,11 +122,12 @@ void socket_listenToConections(int socketFD, int maxConections) {
 }
 
 void server_recvConections(int server_socketFD){
+    // Roda em loop aceitando novas conexões e depois gerando threads para executar seus processos
     while(true){
         struct sockaddr_in client_addr;
         socklen_t client_addrlen = sizeof(client_addr);
 
-        // Aceitação de uma nova conexão
+        // Aceita uma nova conexão
         int client_socket = socket_acceptConnection(server_socketFD, client_addr, client_addrlen);
 
         char name_input[1024] = {0};
@@ -151,7 +153,7 @@ void server_recvConections(int server_socketFD){
 
 int socket_acceptConnection(int socketFD, struct sockaddr_in &client_addr, socklen_t &client_addrlen) {
     int client_socket;
-
+    // Aceita conexão de cliente e salva respectivo socket retornado
     if ((client_socket = accept(socketFD, (struct sockaddr *)&client_addr, &client_addrlen)) < 0) {
         std::cout << "ERRO: Falha ao aceitar nova conexão" << std::endl;        
         close(socketFD);
@@ -186,21 +188,23 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
     char buffer[1024] = {0};
     while(true){
         memset(buffer, 0, sizeof(buffer));
+        // Recebe dado do cliente
         int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
         std::string receivedMessage(buffer);
         if (recvData_len > 0) {
             std::string headerMsg = origin_clientName + ": "; 
-
-            // Envio de uma mensagem direta para outro cliente
+            // Envio de uma mensagem direta para outro cliente caso receba o respectivo código (dm nomeDeUsuárioVálido:)
             if (receivedMessage.find("dm ") == 0) {      
                 for (const auto &client : clients_list) {
                     std::string directMsgSign = "dm " + client.client_Name + ":";
+                    // Verifica se o código recebido corresponde a algum cliente ativo
                     if(receivedMessage.find(directMsgSign)==0){
                         std::string directMsg = receivedMessage.substr(directMsgSign.length(), receivedMessage.length()-1);
                         // Tirar espaço do início da mensagem caso exista
                         if(directMsg[0] == ' '){
                             directMsg = directMsg.substr(1, directMsg.length()-1);
                         }
+                        // Encaminha mensagem direta para o usuário destino
                         directMsg = "(DM) " + headerMsg + directMsg;
                         std::cout << std::endl << "Mandando mensagem direta para " << client.client_Name << " de " << origin_clientName << std::endl; 
                         sendDirectMsg(directMsg, client.client_Name);
@@ -212,6 +216,7 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
                           "- *dm nomeDoCliente:* -> Envia mensagem direta para outro cliente.\n"
                           "- *client list* -> Retorna uma lista de todos os clientes conectados.\n";
                 sendDirectMsg(helpMsg, origin_clientName);
+            // Servidor retorna lista de clientes ativos para o usuário
             }else if(receivedMessage=="client list"){
                 std::string listMsg = "Lista de clientes conectados:\n";
                 for (const auto &client : clients_list) {
@@ -235,6 +240,7 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
 
 
 void sendDirectMsg(const std::string &message, const std::string targetClient){
+    // Envia mensagem para cliente específico
     for (const auto &client : clients_list) {
         if (client.client_Name == targetClient) {
             sendMessage(client.client_Socket, message);
@@ -261,9 +267,8 @@ void sendServerMsg(int socket){
     while(true){
         // Recebe mensagem do gerenciador do servidor
         std::string message = getUserInput();
-
         std::string completeMsg = name + ": " + message;
-        // Manda mensagem do servidor para todos os clientes
+        // Manda mensagem de "aviso" do servidor para todos os clientes
         for (const auto &client : clients_list) {
             sendMessage(client.client_Socket, completeMsg);
         }
@@ -274,6 +279,7 @@ void sendServerMsg(int socket){
 
 
 std::string getUserInput(void) {
+    // Recebe input pelo terminal do servidor
     std::string clientMsg;
     std::getline(std::cin, clientMsg);
 
@@ -282,5 +288,6 @@ std::string getUserInput(void) {
 
 
 void sendMessage(int socketFD, const std::string &message) {
+    // Repassa mensagem recebida para determinado socket cliente
     send(socketFD, message.c_str(), message.length(), 0);
 }
