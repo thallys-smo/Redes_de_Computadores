@@ -1,18 +1,14 @@
 #include <iostream>
 #include <cstring>
-#include <string>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <thread>
+#include <string> // Manipulação de strings 
+#include <unistd.h> 
+#include <arpa/inet.h> // Manipulação de endereços de rede
+#include <sys/types.h> // Operações de socket
+#include <sys/socket.h> // Biblioteca padrão para uso de sockets
+#include <netinet/in.h> // Definição de estruturas de rede
+#include <thread> // Permite código concorrente
+#include <vector> // Usada para manipular lista de clientes
 
-#include <vector>
-
-// Comandos de compilação
-// g++ -o server server.cpp -lpthread
-// ./server
 
 // Variáveis para armazenar informações do cliente
 struct ClientInfo_Struct {
@@ -23,6 +19,7 @@ struct ClientInfo_Struct {
 };
 std::vector<ClientInfo_Struct> clients_list;
 int clientID_counter = 0;
+
 
 // Declaração das funções
 int createSocket();
@@ -49,7 +46,7 @@ int main() {
 
     // Configurações de porta e ip do socket
     int server_port = 8080;
-    std::string server_IP = ""; // Se quiser usar o server ouça qualquer ip deixar vazio ""
+    std::string server_IP = ""; // Se não quiser linkar o servidor a nenhum IP em particular e deixa-lo ouvir todos os IPs disponíveis, coloque ""
     if (server_IP == "localHost") {
         server_IP = "127.0.0.1";
     }
@@ -61,8 +58,8 @@ int main() {
     // Linka o socket no endereço definido
     bindSocket(server_socketFD, server_addr, server_port);
 
-    // Ouvindo conexões (limite de 15 conexões)
-    int maxConections = 15;
+    // Ouvindo conexões (limite de 20 conexões)
+    int maxConections = 20;
     socket_listenToConections(server_socketFD, maxConections);
 
     // Trata conexões recebidas
@@ -80,7 +77,7 @@ int createSocket() {
     int server_socketFD;
     
     // Cria o socket file descriptor para os protocolos IPv4 e TCP
-    if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { 
+    if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) {  // AF_INET -> IPv4 / SOCK_STREAM -> TCṔ
         std::cout << "ERRO: Criação do socket falhou" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -93,7 +90,7 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
     server_addr.sin_family = AF_INET; // Especifica protocolo IPv4
     server_addr.sin_port = htons(port); // Converte o número da porta fornecida para o formato aceito pela rede
 
-    // Se ip estiver definido como "" o servidor irá ser capaz de ouvir em qualquer IP disponível
+    // Se ip estiver definido como "", o servidor irá ser capaz de ouvir em qualquer IP disponível
     if(ip==""){
         server_addr.sin_addr.s_addr = INADDR_ANY;
     }else{
@@ -113,7 +110,7 @@ void bindSocket(int socketFD, struct sockaddr_in &socket_addr, int server_port) 
 }
 
 void socket_listenToConections(int socketFD, int maxConections) {
-    // Mantém o socket ouvindo novas conexões até que se alcance o limite definido
+    // Mantém o socket ouvindo novas conexões até que chegue no limite definido
     if (listen(socketFD, maxConections) < 0) {
         std::cout << "ERRO: Falha ao escutar novas conexões" << std::endl;
         close(socketFD);
@@ -144,7 +141,7 @@ void server_recvConections(int server_socketFD){
         clients_list.push_back({client_socket, client_addr, client_ID, client_name});
         clientID_counter++;
 
-        // Lida com os clientes de forma paralela
+        // Lida com os clientes de forma simultânea
         std::thread thread_dealWithNewConnections(socket_dealWithNewConnections, client_socket, client_ID, client_name);
         thread_dealWithNewConnections.detach(); 
     }
@@ -206,7 +203,7 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
                         }
                         // Encaminha mensagem direta para o usuário destino
                         directMsg = "(DM) " + headerMsg + directMsg;
-                        std::cout << std::endl << "Mandando mensagem direta para " << client.client_Name << " de " << origin_clientName << std::endl; 
+                        std::cout << std::endl << "Mandando mensagem direta de " << origin_clientName << " para " << client.client_Name << std::endl; 
                         sendDirectMsg(directMsg, client.client_Name);
                     }
                 }
@@ -231,7 +228,7 @@ void recvData(int client_socketFD, int client_ID, const std::string origin_clien
             }
         }
         else if (recvData_len <= 0) {
-            std::cout << std::endl << "ERRO: Perda de conexão com o client -> " << origin_clientName << std::endl;
+            std::cout << std::endl << "ERRO: Perda de conexão com o client " << origin_clientName << std::endl;
             break;
         }
     }

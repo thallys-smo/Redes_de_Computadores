@@ -1,15 +1,12 @@
 #include <iostream>
 #include <cstring>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/types.h> // Operações de socket
+#include <sys/socket.h> // Biblioteca padrão para uso de sockets
+#include <netinet/in.h> // Definição de estruturas de rede
+#include <arpa/inet.h> // Manipulação de endereços de rede
 #include <unistd.h>
-#include <thread>
+#include <thread> // Permite código concorrente
 
-// Comandos de compilação
-// g++ -o client client.cpp -lpthread
-// ./client
 
 // Declaração das funções
 int createSocket();
@@ -32,10 +29,10 @@ int main() {
     int server_port = 8080;
     defineSocketAddr(serv_addr, "127.0.0.1", server_port);
 
-    // Conecta com o servidor
+    // Conecta o socket no endereço do servidor
     connectToSocket(socket, serv_addr, server_port);
 
-    std::cout << std::endl << " --------  Chat em grupo: Aplicação com Sockets TCP  -----------" << std::endl << std::endl << std::endl ;
+    std::cout << "\n--------  Chat em grupo: Aplicação com Sockets TCP  --------\n" << std::endl;
 
     std::string username;
     std::cout << "Informe seu nome de usuário: ";
@@ -45,7 +42,7 @@ int main() {
 
 
     std::cout << std::endl << "Bem vindo a nossa aplicação " << username << "!" << std::endl;
-    std::cout << "Envie e receba mensagens livremente para seus amigos!" << std::endl <<  std::endl << "Caso deseje visualizar possíveis comandos, basta mandar help" << std::endl << std::endl;
+    std::cout << "Envie e receba mensagens livremente para seus amigos!" << std::endl <<  std::endl << "Caso deseje visualizar possíveis comandos, basta mandar 'help'" << std::endl << std::endl;
 
 
     // Chat loop
@@ -62,20 +59,20 @@ int main() {
 
 
 int createSocket() {
-    int server_socketFD;
+    int client_socketFD;
     // Cria o socket file descriptor para os protocolos IPv4 e TCP
-    if ((server_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { // SOCK_STREAM -> IPv4
-        perror("Criação do socket falhou");
+    if ((client_socketFD = socket(AF_INET, SOCK_STREAM, 0)) == 0) { // AF_INET -> IPv4 / SOCK_STREAM -> TCṔ
+        std::cout << "ERRO: Falha na criação do socket" << std::endl;
         exit(EXIT_FAILURE);
     }
-    return server_socketFD;
+    return client_socketFD;
 }
 
 void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, int port) {
     // Define o endereço do servidor
     server_addr.sin_family = AF_INET; // Especifica protocolo IPv4
     server_addr.sin_port = htons(port); // Converte o número da porta fornecida para o formato aceito pela rede
-    // Se ip estiver definido como "" o servidor irá ser capaz de ouvir em qualquer IP disponível
+    // Se não quiser linkar o servidor a nenhum IP em particular e deixa-lo ouvir todos os IPs disponíveis, coloque ""
     if (ip == "") {
         server_addr.sin_addr.s_addr = INADDR_ANY;
     } else {
@@ -87,11 +84,12 @@ void defineSocketAddr(struct sockaddr_in &server_addr, const std::string &ip, in
 void connectToSocket(int socketFD, struct sockaddr_in &server_addr, int port) {
     // Conecta com o socket do servidor
     if (connect(socketFD, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        std::cerr << "Connection Failed" << std::endl;
+        std::cout << "ERRO: Conexão com socket do servidor falhou" << std::endl;
         exit(EXIT_FAILURE);
     }
     std::cout << "Conexão estabelecida com servidor na porta " << port << std::endl;
 
+    return;
 }
 
 void sendData(int socket, const std::string &username){
@@ -106,6 +104,7 @@ void sendData(int socket, const std::string &username){
 
         // Repassa mensagem para o servidor
         sendMessage(socket, message);
+        // std::cout << "\n"; 
     }
 }
 
@@ -129,7 +128,7 @@ void recvData(int client_socketFD) {
         // Recebe dados do servidor e printa para o usuário
         int recvData_len = recv(client_socketFD, buffer, sizeof(buffer), 0); 
         if (recvData_len > 0) {
-            std::cout << std::endl << buffer << std::endl;
+            std::cout << "\n" << buffer << "\n\n";
         }
         else if (recvData_len <= 0) {
             std::cout << "ERRO: Perda de conexão com o servidor" << std::endl;
