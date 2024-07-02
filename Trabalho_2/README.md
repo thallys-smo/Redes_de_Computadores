@@ -8,7 +8,38 @@ Este projeto implementa um chat em grupo utilizando sockets TCP e endereçamento
 
 Dessa forma, o servidor permite que múltiplos clientes se conectem simultaneamente e possibilita que cada cliente envie mensagens broadcast (mensagens destinadas aos demais clientes conectados) ou mensagens diretas (mensagens destinadas para um cliente específico). Além disso, foram implementadas algumas funcionalidades simples para melhorar a experiência dos usuários. 
 
+### Funcionalidades
+
+- **Mensagens Broadcast**: Permite enviar mensagens para todos os clientes conectados ao servidor.
+- **Mensagens Diretas**: Permite enviar mensagens diretamente para um cliente específico. Para enviar uma mensagem direta, utilize o comando 'dm nomeDoCliente: mensagem' no terminal.
+- **Mensagens do servidor**: Permite que sejam enviadas mensagens/avisos, destinadas para todos os clientes, através do servidor. 
+- **Comandos de Ajuda (help)**: Fornece um comando para exibir a lista de comandos disponíveis. Para utiliza-lo, envie 'help' através dos clientes.
+- **Lista de Clientes (client list)**: Possibilidade de listar todos os clientes conectados ao servidor. Para utiliza-lo, envie 'client list' através dos clientes.
+
 ### Compilação e Execução
+
+**Requisitos**:
+
+Os requisitos deste projeto normalmente já vem instalados por padrão no linux. Entretanto, caso tenha problemas seguem as devidas instruções: 
+
+Para compilar e executar este projeto, são necessárias as seguintes bibliotecas:
+
+- **gcc**: Compilador GNU para C e C++
+
+    ```sh
+    sudo apt update
+    sudo apt install gcc
+    ```
+
+- **libstdc++**: Biblioteca padrão do C++
+  - Instalação adicional não necessária no Ubuntu/Debian, incluída com o GCC.
+
+- **pthread**: Biblioteca para suporte a threads POSIX.
+
+    ```sh
+    sudo apt update
+    sudo apt install libpthread-stubs0-dev
+    ```
 
 **Compilando o Servidor**:
 
@@ -16,7 +47,7 @@ Dessa forma, o servidor permite que múltiplos clientes se conectem simultaneame
 - Compile o servidor com o seguinte comando:
 
     ```sh
-    g++ -o server server.cpp -lpthread
+    gcc -o server server.cpp -lstdc++ -lpthread
     ```
 
 **Executando o Servidor**:
@@ -33,7 +64,7 @@ Dessa forma, o servidor permite que múltiplos clientes se conectem simultaneame
 - Compile o cliente com o seguinte comando:
 
     ```sh
-    g++ -o client client.cpp -lpthread
+    gcc -o client client.cpp -lstdc++ -lpthread
     ```
 
 **Executando o Cliente**:
@@ -46,13 +77,6 @@ Dessa forma, o servidor permite que múltiplos clientes se conectem simultaneame
 
 Certifique-se de iniciar o servidor antes de executar os clientes. Cada cliente deve se conectar ao servidor especificando o IP e a porta correspondentes.
 
-### Funcionalidades
-
-- **Mensagens Broadcast**: Permite enviar mensagens para todos os clientes conectados ao servidor.
-- **Mensagens Diretas**: Permite enviar mensagens diretamente para um cliente específico. Para enviar uma mensagem direta, utilize o comando 'dm nomeDoCliente: mensagem' no terminal.
-- **Mensagens do servidor**: Permite que sejam enviadas mensagens/avisos, destinadas para todos os clientes, através do servidor. 
-- **Comandos de Ajuda (help)**: Fornece um comando para exibir a lista de comandos disponíveis. Para utiliza-lo, envie 'help' através dos clientes.
-- **Lista de Clientes (client list)**: Possibilidade de listar todos os clientes conectados ao servidor. Para utiliza-lo, envie 'client list' através dos clientes.
 
 ### Alunos 
 - Matheus Della Rocca Martins       - 12549731
