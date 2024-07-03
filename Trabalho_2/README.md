@@ -2,6 +2,15 @@
 
 ## Chat em grupo - TRABALHO 2
 
+### Alunos 
+- Matheus Della Rocca Martins       - 12549731
+- Thallys Simões de Morais Oliveira - 11819827
+
+### Vídeo de Demonstração:
+
+
+https://github.com/thallys-smo/Redes_de_Computadores/assets/72418094/9606a23c-e33d-4396-9e34-f1079833d308
+
 ### Proposta
 
 Este projeto implementa um chat em grupo utilizando sockets TCP e endereçamento com IPv4. Neste sentido, visa-se desenvolver uma aplicação que permite a troca de mensagens, gerenciadas por um servidor, entre diversos usuários conectados em rede em uma mesma máquina. 
@@ -80,6 +89,4 @@ Certifique-se de iniciar o servidor antes de executar os clientes. Cada cliente 
 - **Comando de ajuda**: Fornece um comando para exibir a lista de comandos disponíveis. Para utiliza-lo, envie `help` através dos clientes.
 - **Lista de Clientes**: Possibilidade de listar todos os clientes conectados ao servidor. Para utiliza-lo, envie `client list` através dos clientes.
 
-### Alunos 
-- Matheus Della Rocca Martins       - 12549731
-- Thallys Simões de Morais Oliveira - 11819827
+
